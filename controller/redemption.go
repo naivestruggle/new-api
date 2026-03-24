@@ -8,7 +8,6 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,10 +18,13 @@ func GetAllRedemptions(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if err = model.LoadRedemptionPlanTitles(redemptions); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(redemptions)
 	common.ApiSuccess(c, pageInfo)
-	return
 }
 
 func SearchRedemptions(c *gin.Context) {
@@ -33,10 +35,13 @@ func SearchRedemptions(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if err = model.LoadRedemptionPlanTitles(redemptions); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(redemptions)
 	common.ApiSuccess(c, pageInfo)
-	return
 }
 
 func GetRedemption(c *gin.Context) {
@@ -50,18 +55,20 @@ func GetRedemption(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if err = model.LoadSingleRedemptionPlanTitle(redemption); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
 		"data":    redemption,
 	})
-	return
 }
 
 func AddRedemption(c *gin.Context) {
 	redemption := model.Redemption{}
-	err := c.ShouldBindJSON(&redemption)
-	if err != nil {
+	if err := c.ShouldBindJSON(&redemption); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -77,23 +84,24 @@ func AddRedemption(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgRedemptionCountMax)
 		return
 	}
-	if valid, msg := validateExpiredTime(c, redemption.ExpiredTime); !valid {
+	if valid, msg := validateRedemptionPayload(c, &redemption); !valid {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": msg})
 		return
 	}
-	var keys []string
+
+	keys := make([]string, 0, redemption.Count)
 	for i := 0; i < redemption.Count; i++ {
 		key := common.GetUUID()
 		cleanRedemption := model.Redemption{
-			UserId:      c.GetInt("id"),
-			Name:        redemption.Name,
-			Key:         key,
-			CreatedTime: common.GetTimestamp(),
-			Quota:       redemption.Quota,
-			ExpiredTime: redemption.ExpiredTime,
+			UserId:             c.GetInt("id"),
+			Name:               redemption.Name,
+			Key:                key,
+			CreatedTime:        common.GetTimestamp(),
+			Quota:              redemption.Quota,
+			SubscriptionPlanId: redemption.SubscriptionPlanId,
+			ExpiredTime:        redemption.ExpiredTime,
 		}
-		err = cleanRedemption.Insert()
-		if err != nil {
+		if err := cleanRedemption.Insert(); err != nil {
 			common.SysError("failed to insert redemption: " + err.Error())
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
@@ -109,13 +117,11 @@ func AddRedemption(c *gin.Context) {
 		"message": "",
 		"data":    keys,
 	})
-	return
 }
 
 func DeleteRedemption(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	err := model.DeleteRedemptionById(id)
-	if err != nil {
+	if err := model.DeleteRedemptionById(id); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -123,14 +129,12 @@ func DeleteRedemption(c *gin.Context) {
 		"success": true,
 		"message": "",
 	})
-	return
 }
 
 func UpdateRedemption(c *gin.Context) {
 	statusOnly := c.Query("status_only")
 	redemption := model.Redemption{}
-	err := c.ShouldBindJSON(&redemption)
-	if err != nil {
+	if err := c.ShouldBindJSON(&redemption); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -140,20 +144,23 @@ func UpdateRedemption(c *gin.Context) {
 		return
 	}
 	if statusOnly == "" {
-		if valid, msg := validateExpiredTime(c, redemption.ExpiredTime); !valid {
+		if valid, msg := validateRedemptionPayload(c, &redemption); !valid {
 			c.JSON(http.StatusOK, gin.H{"success": false, "message": msg})
 			return
 		}
-		// If you add more fields, please also update redemption.Update()
 		cleanRedemption.Name = redemption.Name
 		cleanRedemption.Quota = redemption.Quota
+		cleanRedemption.SubscriptionPlanId = redemption.SubscriptionPlanId
 		cleanRedemption.ExpiredTime = redemption.ExpiredTime
 	}
 	if statusOnly != "" {
 		cleanRedemption.Status = redemption.Status
 	}
-	err = cleanRedemption.Update()
-	if err != nil {
+	if err = cleanRedemption.Update(); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if err = model.LoadSingleRedemptionPlanTitle(cleanRedemption); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -162,7 +169,6 @@ func UpdateRedemption(c *gin.Context) {
 		"message": "",
 		"data":    cleanRedemption,
 	})
-	return
 }
 
 func DeleteInvalidRedemption(c *gin.Context) {
@@ -176,12 +182,32 @@ func DeleteInvalidRedemption(c *gin.Context) {
 		"message": "",
 		"data":    rows,
 	})
-	return
 }
 
 func validateExpiredTime(c *gin.Context, expired int64) (bool, string) {
 	if expired != 0 && expired < common.GetTimestamp() {
 		return false, i18n.T(c, i18n.MsgRedemptionExpireTimeInvalid)
+	}
+	return true, ""
+}
+
+func validateRedemptionPayload(c *gin.Context, redemption *model.Redemption) (bool, string) {
+	if redemption == nil {
+		return false, "参数错误"
+	}
+	if valid, msg := validateExpiredTime(c, redemption.ExpiredTime); !valid {
+		return false, msg
+	}
+	if redemption.Quota < 0 {
+		return false, "额度不能为负数"
+	}
+	if redemption.Quota == 0 && redemption.SubscriptionPlanId <= 0 {
+		return false, "额度为 0 时，必须至少关联一个订阅套餐"
+	}
+	if redemption.SubscriptionPlanId > 0 {
+		if _, err := model.GetSubscriptionPlanById(redemption.SubscriptionPlanId); err != nil {
+			return false, model.ErrRedemptionPlanMissing.Error()
+		}
 	}
 	return true, ""
 }

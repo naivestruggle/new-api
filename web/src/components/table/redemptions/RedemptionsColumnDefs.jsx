@@ -18,18 +18,15 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Tag, Button, Space, Popover, Dropdown } from '@douyinfe/semi-ui';
+import { Button, Dropdown, Popover, Space, Tag } from '@douyinfe/semi-ui';
 import { IconMore } from '@douyinfe/semi-icons';
 import { renderQuota, timestamp2string } from '../../../helpers';
 import {
+  REDEMPTION_ACTIONS,
   REDEMPTION_STATUS,
   REDEMPTION_STATUS_MAP,
-  REDEMPTION_ACTIONS,
 } from '../../../constants/redemption.constants';
 
-/**
- * Check if redemption code is expired
- */
 export const isExpired = (record) => {
   return (
     record.status === REDEMPTION_STATUS.UNUSED &&
@@ -38,16 +35,8 @@ export const isExpired = (record) => {
   );
 };
 
-/**
- * Render timestamp
- */
-const renderTimestamp = (timestamp) => {
-  return <>{timestamp2string(timestamp)}</>;
-};
+const renderTimestamp = (timestamp) => <>{timestamp2string(timestamp)}</>;
 
-/**
- * Render redemption code status
- */
 const renderStatus = (status, record, t) => {
   if (isExpired(record)) {
     return (
@@ -73,18 +62,23 @@ const renderStatus = (status, record, t) => {
   );
 };
 
-/**
- * Get redemption code table column definitions
- */
+const renderPlan = (record) => {
+  if (!record?.subscription_plan_id) {
+    return <div>-</div>;
+  }
+  return (
+    <Tag color='blue' shape='circle'>
+      {record.subscription_plan_title || `#${record.subscription_plan_id}`}
+    </Tag>
+  );
+};
+
 export const getRedemptionsColumns = ({
   t,
   manageRedemption,
   copyText,
   setEditingRedemption,
   setShowEdit,
-  refresh,
-  redemptions,
-  activePage,
   showDeleteRedemptionModal,
 }) => {
   return [
@@ -97,54 +91,50 @@ export const getRedemptionsColumns = ({
       dataIndex: 'name',
     },
     {
+      title: t('订阅套餐'),
+      dataIndex: 'subscription_plan_title',
+      render: (_, record) => renderPlan(record),
+    },
+    {
       title: t('状态'),
       dataIndex: 'status',
       key: 'status',
-      render: (text, record) => {
-        return <div>{renderStatus(text, record, t)}</div>;
-      },
+      render: (text, record) => <div>{renderStatus(text, record, t)}</div>,
     },
     {
       title: t('额度'),
       dataIndex: 'quota',
-      render: (text) => {
-        return (
-          <div>
-            <Tag color='grey' shape='circle'>
-              {renderQuota(parseInt(text))}
-            </Tag>
-          </div>
-        );
-      },
+      render: (text) => (
+        <div>
+          <Tag color='grey' shape='circle'>
+            {Number(text) > 0 ? renderQuota(parseInt(text, 10)) : '0'}
+          </Tag>
+        </div>
+      ),
     },
     {
       title: t('创建时间'),
       dataIndex: 'created_time',
-      render: (text) => {
-        return <div>{renderTimestamp(text)}</div>;
-      },
+      render: (text) => <div>{renderTimestamp(text)}</div>,
     },
     {
       title: t('过期时间'),
       dataIndex: 'expired_time',
-      render: (text) => {
-        return <div>{text === 0 ? t('永不过期') : renderTimestamp(text)}</div>;
-      },
+      render: (text) => (
+        <div>{text === 0 ? t('永不过期') : renderTimestamp(text)}</div>
+      ),
     },
     {
       title: t('兑换人ID'),
       dataIndex: 'used_user_id',
-      render: (text) => {
-        return <div>{text === 0 ? t('无') : text}</div>;
-      },
+      render: (text) => <div>{text === 0 ? '-' : text}</div>,
     },
     {
       title: '',
       dataIndex: 'operate',
       fixed: 'right',
       width: 205,
-      render: (text, record) => {
-        // Create dropdown menu items for more operations
+      render: (_, record) => {
         const moreMenuItems = [
           {
             node: 'item',
@@ -179,11 +169,7 @@ export const getRedemptionsColumns = ({
 
         return (
           <Space>
-            <Popover
-              content={record.key}
-              style={{ padding: 20 }}
-              position='top'
-            >
+            <Popover content={record.key} style={{ padding: 20 }} position='top'>
               <Button type='tertiary' size='small'>
                 {t('查看')}
               </Button>
@@ -207,11 +193,7 @@ export const getRedemptionsColumns = ({
             >
               {t('编辑')}
             </Button>
-            <Dropdown
-              trigger='click'
-              position='bottomRight'
-              menu={moreMenuItems}
-            >
+            <Dropdown trigger='click' position='bottomRight' menu={moreMenuItems}>
               <Button type='tertiary' size='small' icon={<IconMore />} />
             </Dropdown>
           </Space>
