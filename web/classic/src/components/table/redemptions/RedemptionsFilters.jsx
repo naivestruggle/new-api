@@ -66,6 +66,24 @@ const RedemptionsFilters = ({
             size='small'
           />
         </div>
+        <div className='relative w-full md:w-32'>
+          <Form.Input
+            field='usedUserId'
+            placeholder={t('兑换人ID')}
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='relative w-full md:w-48'>
+          <Form.Input
+            field='key'
+            placeholder={t('请输入兑换码')}
+            showClear
+            pure
+            size='small'
+          />
+        </div>
         <div className='flex gap-2 w-full md:w-auto'>
           <Button
             type='tertiary'

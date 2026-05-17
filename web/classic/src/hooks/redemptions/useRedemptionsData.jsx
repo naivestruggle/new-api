@@ -55,6 +55,8 @@ export const useRedemptionsData = () => {
   // Form state
   const formInitValues = {
     searchKeyword: '',
+    usedUserId: '',
+    key: '',
   };
 
   // Get form values
@@ -62,7 +64,17 @@ export const useRedemptionsData = () => {
     const formValues = formApi ? formApi.getValues() : {};
     return {
       searchKeyword: formValues.searchKeyword || '',
+      usedUserId: formValues.usedUserId || '',
+      key: formValues.key || '',
     };
+  };
+
+  const hasSearchFilters = (filters = getFormValues()) => {
+    return (
+      filters.searchKeyword.trim() !== '' ||
+      String(filters.usedUserId || '').trim() !== '' ||
+      String(filters.key || '').trim() !== ''
+    );
   };
 
   // Set redemption data format
@@ -71,7 +83,7 @@ export const useRedemptionsData = () => {
   };
 
   // Load redemption list
-  const loadRedemptions = async (page = 1, pageSize) => {
+  const loadRedemptions = async (page = 1, pageSize = ITEMS_PER_PAGE) => {
     setLoading(true);
     try {
       const res = await API.get(
@@ -93,22 +105,44 @@ export const useRedemptionsData = () => {
   };
 
   // Search redemption codes
-  const searchRedemptions = async () => {
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
-      await loadRedemptions(1, pageSize);
+  const searchRedemptions = async (page = 1, size = pageSize) => {
+    const resolvedPage =
+      typeof page === 'number' && Number.isFinite(page) ? page : 1;
+    const { searchKeyword, usedUserId, key } = getFormValues();
+    const trimmedKeyword = searchKeyword.trim();
+    const trimmedUsedUserId = String(usedUserId || '').trim();
+    const trimmedKey = String(key || '').trim();
+    if (
+      trimmedKeyword === '' &&
+      trimmedUsedUserId === '' &&
+      trimmedKey === ''
+    ) {
+      await loadRedemptions(resolvedPage, size);
       return;
     }
 
     setSearching(true);
     try {
+      const params = new URLSearchParams({
+        p: String(resolvedPage),
+        page_size: String(size),
+      });
+      if (trimmedKeyword) {
+        params.set('keyword', trimmedKeyword);
+      }
+      if (trimmedUsedUserId) {
+        params.set('used_user_id', trimmedUsedUserId);
+      }
+      if (trimmedKey) {
+        params.set('key', trimmedKey);
+      }
       const res = await API.get(
-        `/api/redemption/search?keyword=${searchKeyword}&p=1&page_size=${pageSize}`,
+        `/api/redemption/search?${params.toString()}`,
       );
       const { success, message, data } = res.data;
       if (success) {
         const newPageData = data.items;
-        setActivePage(data.page || 1);
+        setActivePage(data.page || resolvedPage || 1);
         setTokenCount(data.total);
         setRedemptionFormat(newPageData);
       } else {
@@ -163,22 +197,20 @@ export const useRedemptionsData = () => {
 
   // Refresh data
   const refresh = async (page = activePage) => {
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
+    if (!hasSearchFilters()) {
       await loadRedemptions(page, pageSize);
     } else {
-      await searchRedemptions();
+      await searchRedemptions(page, pageSize);
     }
   };
 
   // Handle page change
   const handlePageChange = (page) => {
     setActivePage(page);
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
+    if (!hasSearchFilters()) {
       loadRedemptions(page, pageSize);
     } else {
-      searchRedemptions();
+      searchRedemptions(page, pageSize);
     }
   };
 
@@ -186,11 +218,10 @@ export const useRedemptionsData = () => {
   const handlePageSizeChange = (size) => {
     setPageSize(size);
     setActivePage(1);
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
+    if (!hasSearchFilters()) {
       loadRedemptions(1, size);
     } else {
-      searchRedemptions();
+      searchRedemptions(1, size);
     }
   };
 
@@ -301,7 +332,7 @@ export const useRedemptionsData = () => {
       .catch((reason) => {
         showError(reason);
       });
-  }, [pageSize]);
+  }, []);
 
   return {
     // Data state
