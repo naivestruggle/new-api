@@ -43,6 +43,7 @@ export function getRedemptionFormSchema(t: TFunction) {
       .min(REDEMPTION_VALIDATION.COUNT_MIN, msg.COUNT_INVALID)
       .max(REDEMPTION_VALIDATION.COUNT_MAX, msg.COUNT_INVALID)
       .optional(),
+    plan_id: z.number().optional(),
   })
 }
 
@@ -51,6 +52,7 @@ export type RedemptionFormValues = {
   quota_dollars: number
   expired_time?: Date
   count?: number
+  plan_id?: number
 }
 
 // ============================================================================
@@ -62,6 +64,7 @@ export const REDEMPTION_FORM_DEFAULT_VALUES: RedemptionFormValues = {
   quota_dollars: 10,
   expired_time: undefined,
   count: 1,
+  plan_id: undefined,
 }
 
 // ============================================================================
@@ -81,6 +84,7 @@ export function transformFormDataToPayload(
       ? Math.floor(data.expired_time.getTime() / 1000)
       : 0,
     count: data.count || 1,
+    plan_id: data.plan_id || 0,
   }
 }
 
@@ -98,5 +102,6 @@ export function transformRedemptionToFormDefaults(
         ? new Date(redemption.expired_time * 1000)
         : undefined,
     count: 1,
+    plan_id: redemption.plan_id || undefined,
   }
 }

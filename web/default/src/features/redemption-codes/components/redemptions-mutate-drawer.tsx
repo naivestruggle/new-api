@@ -35,6 +35,14 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Sheet,
   SheetClose,
   SheetContent,
@@ -44,6 +52,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { DateTimePicker } from '@/components/datetime-picker'
+import { getAdminPlans } from '@/features/subscriptions/api'
+import type { SubscriptionPlan } from '@/features/subscriptions/types'
 import { createRedemption, updateRedemption, getRedemption } from '../api'
 import { SUCCESS_MESSAGES } from '../constants'
 import {
@@ -71,11 +81,25 @@ export function RedemptionsMutateDrawer({
   const isUpdate = !!currentRow
   const { triggerRefresh } = useRedemptions()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
 
   const form = useForm<RedemptionFormValues>({
     resolver: zodResolver(getRedemptionFormSchema(t)),
     defaultValues: REDEMPTION_FORM_DEFAULT_VALUES,
   })
+
+  const selectedPlanId = form.watch('plan_id')
+
+  // Load subscription plans for the selector
+  useEffect(() => {
+    if (open) {
+      getAdminPlans().then((res) => {
+        if (res.success && res.data) {
+          setPlans(res.data.map((r) => r.plan))
+        }
+      })
+    }
+  }, [open])
 
   // Load existing data when updating
   useEffect(() => {
@@ -192,6 +216,54 @@ export function RedemptionsMutateDrawer({
 
             <FormField
               control={form.control}
+              name='plan_id'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Subscription Plan')}</FormLabel>
+                  <Select
+                    items={[
+                      { value: 0, label: t('None (quota only)') },
+                      ...plans.map((p) => ({
+                        value: p.id,
+                        label: p.title,
+                      })),
+                    ]}
+                    value={field.value ?? 0}
+                    onValueChange={(v) =>
+                      field.onChange(v === 0 ? undefined : v)
+                    }
+                  >
+                    <FormControl>
+                      <SelectTrigger className='w-full'>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        <SelectItem value={0}>
+                          {t('None (quota only)')}
+                        </SelectItem>
+                        {plans.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.title}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t(
+                      'Optionally bind a subscription plan to activate on redemption'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {!selectedPlanId && (
+            <FormField
+              control={form.control}
               name='quota_dollars'
               render={({ field }) => (
                 <FormItem>
@@ -218,6 +290,7 @@ export function RedemptionsMutateDrawer({
                 </FormItem>
               )}
             />
+            )}
 
             <FormField
               control={form.control}

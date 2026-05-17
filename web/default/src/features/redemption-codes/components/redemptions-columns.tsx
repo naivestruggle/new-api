@@ -166,6 +166,16 @@ export function useRedemptionsColumns(): ColumnDef<Redemption>[] {
         <DataTableColumnHeader column={column} title={t('Quota')} />
       ),
       cell: ({ row }) => {
+        const redemption = row.original
+        if (redemption.plan_id && redemption.plan_id > 0) {
+          return (
+            <StatusBadge
+              label={t('Subscription')}
+              variant='info'
+              copyable={false}
+            />
+          )
+        }
         const quota = row.getValue('quota') as number
         return (
           <StatusBadge

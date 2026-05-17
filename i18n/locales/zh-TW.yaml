@@ -60,6 +60,9 @@ redemption.expired: "該兌換碼已過期"
 redemption.failed: "兌換失敗，請稍後重試"
 redemption.not_provided: "未提供兌換碼"
 redemption.expire_time_invalid: "過期時間不能早於當前時間"
+redemption.plan_not_found: "關聯的訂閱計劃不存在"
+redemption.plan_disabled: "關聯的訂閱計劃已停用"
+redemption.quota_or_plan_required: "額度和訂閱計劃至少需要設置一個"
 
 # User messages
 user.password_login_disabled: "管理員關閉了密碼登錄"

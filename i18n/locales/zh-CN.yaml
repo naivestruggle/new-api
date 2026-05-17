@@ -60,6 +60,9 @@ redemption.expired: "该兑换码已过期"
 redemption.failed: "兑换失败，请稍后重试"
 redemption.not_provided: "未提供兑换码"
 redemption.expire_time_invalid: "过期时间不能早于当前时间"
+redemption.plan_not_found: "关联的订阅计划不存在"
+redemption.plan_disabled: "关联的订阅计划已禁用"
+redemption.quota_or_plan_required: "额度和订阅计划至少需要设置一个"
 
 # User messages
 user.password_login_disabled: "管理员关闭了密码登录"

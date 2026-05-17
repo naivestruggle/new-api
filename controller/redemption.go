@@ -87,6 +87,20 @@ func AddRedemption(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": msg})
 		return
 	}
+	if redemption.PlanId > 0 {
+		plan, err := model.GetSubscriptionPlanById(redemption.PlanId)
+		if err != nil || plan == nil {
+			common.ApiErrorI18n(c, i18n.MsgRedemptionPlanNotFound)
+			return
+		}
+		if !plan.Enabled {
+			common.ApiErrorI18n(c, i18n.MsgRedemptionPlanDisabled)
+			return
+		}
+	} else if redemption.Quota <= 0 {
+		common.ApiErrorI18n(c, i18n.MsgRedemptionQuotaOrPlanRequired)
+		return
+	}
 	var keys []string
 	for i := 0; i < redemption.Count; i++ {
 		key := common.GetUUID()
@@ -97,6 +111,7 @@ func AddRedemption(c *gin.Context) {
 			CreatedTime: common.GetTimestamp(),
 			Quota:       redemption.Quota,
 			ExpiredTime: redemption.ExpiredTime,
+			PlanId:      redemption.PlanId,
 		}
 		err = cleanRedemption.Insert()
 		if err != nil {
@@ -150,10 +165,22 @@ func UpdateRedemption(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"success": false, "message": msg})
 			return
 		}
+		if redemption.PlanId > 0 {
+			plan, err := model.GetSubscriptionPlanById(redemption.PlanId)
+			if err != nil || plan == nil {
+				common.ApiErrorI18n(c, i18n.MsgRedemptionPlanNotFound)
+				return
+			}
+			if !plan.Enabled {
+				common.ApiErrorI18n(c, i18n.MsgRedemptionPlanDisabled)
+				return
+			}
+		}
 		// If you add more fields, please also update redemption.Update()
 		cleanRedemption.Name = redemption.Name
 		cleanRedemption.Quota = redemption.Quota
 		cleanRedemption.ExpiredTime = redemption.ExpiredTime
+		cleanRedemption.PlanId = redemption.PlanId
 	}
 	if statusOnly != "" {
 		cleanRedemption.Status = redemption.Status

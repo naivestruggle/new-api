@@ -69,6 +69,9 @@ const (
 	MsgRedemptionFailed            = "redemption.failed"
 	MsgRedemptionNotProvided       = "redemption.not_provided"
 	MsgRedemptionExpireTimeInvalid = "redemption.expire_time_invalid"
+	MsgRedemptionPlanNotFound      = "redemption.plan_not_found"
+	MsgRedemptionPlanDisabled      = "redemption.plan_disabled"
+	MsgRedemptionQuotaOrPlanRequired = "redemption.quota_or_plan_required"
 )
 
 // User related messages

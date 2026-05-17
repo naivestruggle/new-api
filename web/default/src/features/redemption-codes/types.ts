@@ -33,6 +33,7 @@ export const redemptionSchema = z.object({
   redeemed_time: z.number(),
   expired_time: z.number(), // 0 for never expires
   used_user_id: z.number(),
+  plan_id: z.number().optional(), // 0 or undefined = no subscription
 })
 
 export type Redemption = z.infer<typeof redemptionSchema>
@@ -76,6 +77,7 @@ export interface RedemptionFormData {
   expired_time: number
   count?: number // Only for create
   status?: number // Only for status update
+  plan_id?: number // 0 = no subscription
 }
 
 // ============================================================================
