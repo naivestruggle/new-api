@@ -69,7 +69,7 @@ func GetAllRedemptions(startIdx int, num int) (redemptions []*Redemption, total 
 	return redemptions, total, nil
 }
 
-func SearchRedemptions(keyword string, startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
+func SearchRedemptions(keyword string, usedUserId string, key string, startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -80,14 +80,29 @@ func SearchRedemptions(keyword string, startIdx int, num int) (redemptions []*Re
 		}
 	}()
 
-	// Build query based on keyword type
+	// Build query based on filters
 	query := tx.Model(&Redemption{})
 
-	// Only try to convert to ID if the string represents a valid integer
-	if id, err := strconv.Atoi(keyword); err == nil {
-		query = query.Where("id = ? OR name LIKE ?", id, keyword+"%")
-	} else {
-		query = query.Where("name LIKE ?", keyword+"%")
+	if usedUserId != "" {
+		if uid, err := strconv.Atoi(usedUserId); err == nil && uid > 0 {
+			query = query.Where("used_user_id = ?", uid)
+		}
+	}
+
+	if key != "" {
+		keyCol := "`key`"
+		if common.UsingPostgreSQL {
+			keyCol = `"key"`
+		}
+		query = query.Where(keyCol+" = ?", key)
+	}
+
+	if keyword != "" {
+		if id, err := strconv.Atoi(keyword); err == nil {
+			query = query.Where("id = ? OR name LIKE ?", id, keyword+"%")
+		} else {
+			query = query.Where("name LIKE ?", keyword+"%")
+		}
 	}
 
 	// Get total count

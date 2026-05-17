@@ -39,14 +39,19 @@ export async function getRedemptions(
   return res.data
 }
 
-// Search redemption codes by keyword
+// Search redemption codes by keyword, used_user_id, or key
 export async function searchRedemptions(
   params: SearchRedemptionsParams
 ): Promise<GetRedemptionsResponse> {
-  const { keyword = '', p = 1, page_size = 10 } = params
-  const res = await api.get(
-    `/api/redemption/search?keyword=${keyword}&p=${p}&page_size=${page_size}`
-  )
+  const { keyword = '', used_user_id = '', key = '', p = 1, page_size = 10 } = params
+  const searchParams = new URLSearchParams({
+    p: String(p),
+    page_size: String(page_size),
+  })
+  if (keyword) searchParams.set('keyword', keyword)
+  if (used_user_id) searchParams.set('used_user_id', used_user_id)
+  if (key) searchParams.set('key', key)
+  const res = await api.get(`/api/redemption/search?${searchParams.toString()}`)
   return res.data
 }
 

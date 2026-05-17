@@ -1731,6 +1731,8 @@
     "Filter by name or key...": "按名称或密钥筛选...",
     "Filter by name, ID, or key...": "按名称、ID 或密钥筛选...",
     "Filter by price field": "按价格字段筛选",
+    "Filter by redeemer ID...": "按兑换人 ID 筛选...",
+    "Filter by code...": "按兑换码筛选...",
     "Filter by ratio type": "按倍率类型筛选",
     "Filter by request ID": "按请求 ID 筛选",
     "Filter by task ID": "按任务 ID 筛选",

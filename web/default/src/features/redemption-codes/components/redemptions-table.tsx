@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import {
@@ -38,6 +38,7 @@ import {
   DISABLED_ROW_MOBILE,
   DataTablePage,
 } from '@/components/data-table'
+import { Input } from '@/components/ui/input'
 import { getRedemptions, searchRedemptions } from '../api'
 import { REDEMPTION_STATUS, getRedemptionStatusOptions } from '../constants'
 import { isRedemptionExpired } from '../lib'
@@ -63,6 +64,8 @@ export function RedemptionsTable() {
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [usedUserIdFilter, setUsedUserIdFilter] = useState('')
+  const [keyFilter, setKeyFilter] = useState('')
 
   const {
     globalFilter,
@@ -80,6 +83,8 @@ export function RedemptionsTable() {
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
+  const hasAnyFilter = !!(globalFilter?.trim() || usedUserIdFilter.trim() || keyFilter.trim())
+
   // Fetch data with React Query
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -87,19 +92,30 @@ export function RedemptionsTable() {
       pagination.pageIndex + 1,
       pagination.pageSize,
       globalFilter,
+      usedUserIdFilter,
+      keyFilter,
       refreshTrigger,
     ],
     queryFn: async () => {
-      const hasFilter = globalFilter?.trim()
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
       }
 
-      const result = hasFilter
-        ? await searchRedemptions({ ...params, keyword: globalFilter })
-        : await getRedemptions(params)
+      if (hasAnyFilter) {
+        const result = await searchRedemptions({
+          ...params,
+          keyword: globalFilter?.trim() || '',
+          used_user_id: usedUserIdFilter.trim() || '',
+          key: keyFilter.trim() || '',
+        })
+        return {
+          items: result.data?.items || [],
+          total: result.data?.total || 0,
+        }
+      }
 
+      const result = await getRedemptions(params)
       return {
         items: result.data?.items || [],
         total: result.data?.total || 0,
@@ -107,6 +123,11 @@ export function RedemptionsTable() {
     },
     placeholderData: (previousData) => previousData,
   })
+
+  const handleReset = useCallback(() => {
+    setUsedUserIdFilter('')
+    setKeyFilter('')
+  }, [])
 
   const redemptions = data?.items || []
 
@@ -141,7 +162,7 @@ export function RedemptionsTable() {
     onPaginationChange,
     onGlobalFilterChange,
     onColumnFiltersChange,
-    manualPagination: !globalFilter,
+    manualPagination: true,
     pageCount: Math.ceil((data?.total || 0) / pagination.pageSize),
   })
 
@@ -168,6 +189,24 @@ export function RedemptionsTable() {
       skeletonKeyPrefix='redemptions-skeleton'
       toolbarProps={{
         searchPlaceholder: t('Filter by name or ID...'),
+        additionalSearch: (
+          <>
+            <Input
+              placeholder={t('Filter by redeemer ID...')}
+              value={usedUserIdFilter}
+              onChange={(e) => setUsedUserIdFilter(e.target.value)}
+              className='w-full sm:w-[160px]'
+            />
+            <Input
+              placeholder={t('Filter by code...')}
+              value={keyFilter}
+              onChange={(e) => setKeyFilter(e.target.value)}
+              className='w-full sm:w-[160px]'
+            />
+          </>
+        ),
+        hasAdditionalFilters: !!(usedUserIdFilter || keyFilter),
+        onReset: handleReset,
         filters: [
           {
             columnId: 'status',
